@@ -20,7 +20,7 @@ val types: List<DataType> by lazy {
         DataType.TYPE_CYCLING_PEDALING_CUMULATIVE,
         DataType.TYPE_BASAL_METABOLIC_RATE,
         DataType.TYPE_BODY_FAT_PERCENTAGE,
-        DataType.TYPE_LOCATION_SAMPLE,
+        DataType.TYPE_LOCATION_SAMPLE
     )
 }
 val fitnessOptions: FitnessOptions by lazy {
@@ -39,6 +39,7 @@ val readRequest: DataReadRequest by lazy {
     types.forEach {
         builder.read(it)
     }
+ //   builder.aggregate(DataType.AGGREGATE_DISTANCE_DELTA)
     builder
         .bucketBySession(1, TimeUnit.MINUTES)
         .setTimeRange(startTime.toEpochSecond(), endTime.toEpochSecond(), TimeUnit.SECONDS)

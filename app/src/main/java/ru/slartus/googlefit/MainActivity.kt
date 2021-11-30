@@ -29,57 +29,6 @@ class MainActivity : AppCompatActivity() {
 
     }
 
-    private fun insertSession() {
-        // Create a DataSet of ActivitySegments to indicate the runner walked for
-// 10 minutes in the middle of a run.
-        val endTime = LocalDateTime.now().atZone(ZoneId.systemDefault())
-        val startTime = endTime.minusMinutes(30)
-        val startWalkTime = startTime.toEpochSecond()
-        val SAMPLE_SESSION_NAME = "fake running"
-        val endWalkTime = endTime.toEpochSecond()
-        val activitySegmentDataSource = DataSource.Builder()
-            .setAppPackageName(this.packageName)
-            .setDataType(DataType.TYPE_ACTIVITY_SEGMENT)
-            .setStreamName(SAMPLE_SESSION_NAME + "-activity segments")
-            .setType(DataSource.TYPE_RAW)
-            .build()
-
-        val firstRunningDp = DataPoint.builder(activitySegmentDataSource)
-            .setActivityField(Field.FIELD_ACTIVITY, FitnessActivities.RUNNING)
-            .setTimeInterval(startTime.toEpochSecond(), startWalkTime, TimeUnit.MILLISECONDS)
-            .build()
-
-        val walkingDp = DataPoint.builder(activitySegmentDataSource)
-            .setActivityField(Field.FIELD_ACTIVITY, FitnessActivities.WALKING)
-            .setTimeInterval(startWalkTime, endWalkTime, TimeUnit.MILLISECONDS)
-            .build()
-
-        val secondRunningDp = DataPoint.builder(activitySegmentDataSource)
-            .setActivityField(Field.FIELD_ACTIVITY, FitnessActivities.RUNNING)
-            .setTimeInterval(endWalkTime, endTime.toEpochSecond(), TimeUnit.MILLISECONDS)
-            .build()
-
-        val activitySegments = DataSet.builder(activitySegmentDataSource)
-            .addAll(listOf(firstRunningDp, walkingDp, secondRunningDp))
-            .build()
-
-// Create a session with metadata about the activity.
-        val session = Session.Builder()
-            .setName(SAMPLE_SESSION_NAME)
-            .setDescription("Long run around Shoreline Park")
-            .setIdentifier("UniqueIdentifierHere")
-            .setActivity(FitnessActivities.RUNNING)
-            .setStartTime(startTime.toEpochSecond(), TimeUnit.MILLISECONDS)
-            .setEndTime(endTime.toEpochSecond(), TimeUnit.MILLISECONDS)
-            .build()
-
-// Build a session insert request
-        val insertRequest = SessionInsertRequest.Builder()
-            .setSession(session)
-            .addDataSet(activitySegments)
-            .build()
-    }
-
     private fun accessGoogleFit() {
         Fitness.getHistoryClient(this, getGoogleAccount())
             .readData(readRequest)
@@ -184,7 +133,7 @@ class MainActivity : AppCompatActivity() {
 
         when (resultCode) {
             Activity.RESULT_OK -> when (requestCode) {
-                1 -> accessGoogleFit()
+                FitActionRequestCode.READ_DATA.ordinal -> accessGoogleFit()
                 else -> {
                     // Result wasn't from Google Fit
                 }
