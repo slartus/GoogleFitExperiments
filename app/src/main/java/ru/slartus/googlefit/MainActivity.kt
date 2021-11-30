@@ -47,7 +47,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun dumpBucket(bucket: Bucket) {
-        Log.i(TAG, bucket.session?.identifier ?: "no id")
+        Log.i(TAG, "session id: ${bucket.session?.identifier ?: "no id"}")
         for (dataSet in bucket.dataSets) {
             dumpDataSet(dataSet)
         }
@@ -65,10 +65,10 @@ class MainActivity : AppCompatActivity() {
             "\t\t${dp.dataType.name} ${dp.getStartTimeString()} - ${dp.getEndTimeString()}"
         )
         for (field in dp.dataType.fields) {
-            if (field.name == "activity")
-                Log.i(TAG, "\t\t\t${field.name} Value: ${dp.getValue(field).asActivity()}")
+            if (field == Field.FIELD_ACTIVITY)
+                Log.i(TAG, "\t\t\t${field.name}: ${dp.getValue(field).asActivity()}")
             else
-                Log.i(TAG, "\t\t\t${field.name} Value: ${dp.getValue(field)}")
+                Log.i(TAG, "\t\t\t${field.name}: ${dp.getValue(field)}")
         }
     }
 
