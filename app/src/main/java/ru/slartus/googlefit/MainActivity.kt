@@ -47,7 +47,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun dumpBucket(bucket: Bucket) {
-        Log.i(TAG, bucket.activity)
         Log.i(TAG, bucket.session?.identifier ?: "no id")
         for (dataSet in bucket.dataSets) {
             dumpDataSet(dataSet)
