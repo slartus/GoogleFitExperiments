@@ -10,27 +10,69 @@ import android.provider.Settings
 import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
+import com.google.android.gms.auth.api.Auth
 import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInClient
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.ConnectionResult
+import com.google.android.gms.common.api.GoogleApiClient
+import com.google.android.gms.common.api.Scope
 import com.google.android.gms.fitness.Fitness
-import com.google.android.gms.fitness.FitnessActivities
-import com.google.android.gms.fitness.data.*
-import com.google.android.gms.fitness.request.SessionInsertRequest
+import com.google.android.gms.fitness.data.Bucket
+import com.google.android.gms.fitness.data.DataPoint
+import com.google.android.gms.fitness.data.DataSet
+import com.google.android.gms.fitness.data.Field
 import com.google.android.material.snackbar.Snackbar
-import java.time.LocalDateTime
-import java.time.ZoneId
-import java.util.concurrent.TimeUnit
+import com.squareup.okhttp.*
+import org.json.JSONException
+import org.json.JSONObject
+import java.io.IOException
 
-class MainActivity : AppCompatActivity() {
-
+class MainActivity : AppCompatActivity(), GoogleApiClient.OnConnectionFailedListener {
+    //https://stackoverflow.com/questions/33998335/how-to-get-access-token-after-user-is-signed-in-from-gmail-in-android
+    private var mGoogleSignInClient: GoogleSignInClient? = null
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-        checkPermissionsAndRun(FitActionRequestCode.READ_DATA)
+        // checkPermissionsAndRun(FitActionRequestCode.READ_DATA)
+        requestTokens()
+    }
 
+    private fun requestTokens() {
+        val serverClientId = getString(R.string.server_client_id)
+        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .requestScopes(
+                Fitness.SCOPE_ACTIVITY_READ, // calories
+                Fitness.SCOPE_LOCATION_READ, // distance
+                Scope("https://www.googleapis.com/auth/fitness.heart_rate.read")
+            )
+            .requestServerAuthCode(serverClientId)
+            .requestId()
+            .requestEmail()
+            .build()
+
+        mGoogleSignInClient = GoogleSignIn.getClient(this, gso);
+        getAuthCode()
+    }
+
+    private fun getAuthCode() {
+        // Start the retrieval process for a server auth code.  If requested, ask for a refresh
+        // token.  Otherwise, only get an access token if a refresh token has been previously
+        // retrieved.  Getting a new access token for an existing grant does not require
+        // user consent.
+        val signInIntent = mGoogleSignInClient?.signInIntent
+        startActivityForResult(signInIntent, FitActionRequestCode.AUTH_CODE.ordinal)
+//        val signInIntent = Auth.GoogleSignInApi.getSignInIntent(mGoogleApiClient)
+//        startActivityForResult(signInIntent, FitActionRequestCode.AUTH_CODE.ordinal)
     }
 
     private fun accessGoogleFit() {
-        Fitness.getHistoryClient(this, getGoogleAccount())
+        val account = getGoogleAccount()
+        Log.d(TAG, "account id: ${account.id}")
+
+        val client = Fitness.getHistoryClient(this, account)
+
+        client
             .readData(readRequest)
             .addOnSuccessListener { response ->
                 for (bucket in response.buckets) {
@@ -43,7 +85,6 @@ class MainActivity : AppCompatActivity() {
             .addOnFailureListener { e ->
                 Log.d(TAG, "OnFailure()", e)
             }
-
     }
 
     private fun dumpBucket(bucket: Bucket) {
@@ -108,6 +149,9 @@ class MainActivity : AppCompatActivity() {
     private fun performActionForRequestCode(requestCode: FitActionRequestCode) =
         when (requestCode) {
             FitActionRequestCode.READ_DATA -> accessGoogleFit()
+            else -> {
+                Log.e(TAG, "performActionForRequestCode")
+            }
         }
 
     private fun fitSignIn(requestCode: FitActionRequestCode) {
@@ -131,12 +175,57 @@ class MainActivity : AppCompatActivity() {
         super.onActivityResult(requestCode, resultCode, data)
 
         when (resultCode) {
-            Activity.RESULT_OK -> when (requestCode) {
-                FitActionRequestCode.READ_DATA.ordinal -> accessGoogleFit()
-                else -> {
-                    // Result wasn't from Google Fit
+            Activity.RESULT_OK ->
+                when (requestCode) {
+                    FitActionRequestCode.READ_DATA.ordinal -> accessGoogleFit()
+                    FitActionRequestCode.AUTH_CODE.ordinal -> {
+                        val result = Auth.GoogleSignInApi.getSignInResultFromIntent(data)
+                        if (result.isSuccess) {
+                            // [START get_auth_code]
+                            val acct = result.signInAccount
+                            Log.i(TAG, acct.id)
+                            val client = OkHttpClient()
+                            val requestBody = FormEncodingBuilder()
+                                .add("grant_type", "authorization_code")
+                                .add(
+                                    "client_id",
+                                    getString(R.string.server_client_id)
+                                )
+                                .add("client_secret", "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")// from
+                                .add("redirect_uri", "")
+                                .add("code", acct.serverAuthCode)
+                                .build()
+                            val request: Request = Request.Builder()
+                                .url("https://www.googleapis.com/oauth2/v4/token")
+                                .post(requestBody)
+                                .build()
+                            client.newCall(request).enqueue(object : Callback {
+                                override fun onFailure(request: Request?, e: IOException) {
+                                    Log.e(TAG, e.toString())
+                                }
+
+                                @Throws(IOException::class)
+                                override fun onResponse(response: Response) {
+                                    try {
+                                        val jsonObject = JSONObject(response.body().string())
+                                        val message: String = jsonObject.toString(5)
+                                        val token=jsonObject.getString("access_token")
+                                        Log.i(TAG, token)
+                                        Log.i(TAG, message)
+                                    } catch (e: JSONException) {
+                                        e.printStackTrace()
+                                    }
+                                }
+                            })
+                        } else {
+                            // Show signed-out UI.
+
+                        }
+                    }
+                    else -> {
+                        // Result wasn't from Google Fit
+                    }
                 }
-            }
             else -> {
                 // Permission not granted
             }
@@ -251,5 +340,9 @@ class MainActivity : AppCompatActivity() {
 
     companion object {
         const val TAG = "MainActivity"
+    }
+
+    override fun onConnectionFailed(p0: ConnectionResult) {
+        Log.e(TAG, p0.errorMessage)
     }
 }

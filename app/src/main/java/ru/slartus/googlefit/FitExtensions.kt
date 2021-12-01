@@ -8,7 +8,7 @@ import java.time.ZoneId
 import java.util.concurrent.TimeUnit
 
 enum class FitActionRequestCode {
-    READ_DATA
+    READ_DATA, AUTH_CODE
 }
 
 val runningQOrLater =
