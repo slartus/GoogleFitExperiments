@@ -14,13 +14,7 @@ val types: List<DataType> by lazy {
         DataType.TYPE_CALORIES_EXPENDED,
         DataType.TYPE_DISTANCE_DELTA,
         DataType.TYPE_STEP_COUNT_CUMULATIVE,
-        DataType.TYPE_WEIGHT,
-        DataType.TYPE_HEIGHT,
-        DataType.TYPE_CYCLING_PEDALING_CADENCE,
-        DataType.TYPE_CYCLING_PEDALING_CUMULATIVE,
-        DataType.TYPE_BASAL_METABOLIC_RATE,
-        DataType.TYPE_BODY_FAT_PERCENTAGE,
-        DataType.TYPE_LOCATION_SAMPLE
+        DataType.TYPE_BASAL_METABOLIC_RATE
     )
 }
 val fitnessOptions: FitnessOptions by lazy {
