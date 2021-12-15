@@ -26,13 +26,15 @@ import com.google.android.material.snackbar.Snackbar
 import com.squareup.okhttp.*
 import org.json.JSONException
 import org.json.JSONObject
+import ru.slartus.googlefit.GoogleFitSignInActivityContract.Companion.createSignInClient
 import java.io.IOException
 
 class MainActivity : AppCompatActivity(), GoogleApiClient.OnConnectionFailedListener {
     //https://stackoverflow.com/questions/33998335/how-to-get-access-token-after-user-is-signed-in-from-gmail-in-android
     private val activityResultLauncher =
         registerForActivityResult(
-            ActivityResultContracts.RequestPermission()){ isGranted ->
+            ActivityResultContracts.RequestPermission()
+        ) { isGranted ->
             // Handle Permission granted/rejected
             if (isGranted) {
                 // Permission is granted
@@ -42,7 +44,7 @@ class MainActivity : AppCompatActivity(), GoogleApiClient.OnConnectionFailedList
         }
 
     private val signInResultLauncher = registerForActivityResult(
-        SignInActivityContract()
+        GoogleFitSignInActivityContract(this, "YOUR_CLIENT_ID")
     ) { result ->
         if (result != null) {
             onAuthCodeRequestCallback(result)
@@ -53,10 +55,10 @@ class MainActivity : AppCompatActivity(), GoogleApiClient.OnConnectionFailedList
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         //checkPermissionsAndRun(FitActionRequestCode.READ_DATA)
-        val googleSignInClient = createSignInClient(this)
+        val googleSignInClient = createSignInClient(this, "YOUR_CLIENT_ID")
         googleSignInClient.silentSignIn().addOnCompleteListener {
             if (it.isSuccessful) {
-                requestToken(it.result)
+                requestToken(it.result?.serverAuthCode ?: "")
             } else {
                 requestTokens()
             }
@@ -84,7 +86,7 @@ class MainActivity : AppCompatActivity(), GoogleApiClient.OnConnectionFailedList
                 }
             }
             .addOnFailureListener { e ->
-                Log.d(TAG, "OnFailure()", e)
+                Log.e(TAG, "OnFailure()", e)
             }
     }
 
@@ -159,7 +161,7 @@ class MainActivity : AppCompatActivity(), GoogleApiClient.OnConnectionFailedList
         }
     }
 
-    private fun requestToken(googleAccount: GoogleSignInAccount) {
+    private fun requestToken(serverAuthCode: String) {
         val client = OkHttpClient()
         val requestBody = FormEncodingBuilder()
             .add("grant_type", "authorization_code")
@@ -167,9 +169,9 @@ class MainActivity : AppCompatActivity(), GoogleApiClient.OnConnectionFailedList
                 "client_id",
                 getString(R.string.server_client_id)
             )
-            .add("client_secret", "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")// from
+            .add("client_secret", "CLIENT_SECRET")// from
             .add("redirect_uri", "")
-            .add("code", googleAccount.serverAuthCode)
+            .add("code", serverAuthCode)
             .build()
         val request: Request = Request.Builder()
             .url("https://www.googleapis.com/oauth2/v4/token")
@@ -195,12 +197,12 @@ class MainActivity : AppCompatActivity(), GoogleApiClient.OnConnectionFailedList
         })
     }
 
-    private fun onAuthCodeRequestCallback(result: GoogleSignInResult) {
-        if (result.isSuccess) {
+    private fun onAuthCodeRequestCallback(serverAuthCode: String) {
+        if (serverAuthCode.isNotEmpty()) {
             //accessGoogleFit()
             // [START get_auth_code]
-            val acct = result.signInAccount
-            requestToken(acct)
+
+            requestToken(serverAuthCode)
         } else {
             // Show signed-out UI.
 
